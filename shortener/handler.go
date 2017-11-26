@@ -3,7 +3,6 @@ package shortener
 import (
 	"net/http"
 	"gopkg.in/yaml.v2"
-	"fmt"
 )
 
 // MapHandler will return an http.HandlerFunc (which also
@@ -52,9 +51,7 @@ func YAMLHandler(yml []byte, fallback http.Handler) (http.HandlerFunc, error) {
 	var c Config
 	err := yaml.Unmarshal(yml, &c)
 
-	fmt.Printf("--- m:\n%v\n\n", c)
-
-  // Turn list of yaml entries into maps
+  // Turn list of yaml entries into map
 	m := make(map[string]string)
 	for _, entry := range c.Entry {
 		m[entry.Slug] = entry.Full
