@@ -2,6 +2,7 @@ package shortener
 
 import (
 	"net/http"
+	"gopkg.in/yaml.v2"
 	"fmt"
 )
 
@@ -13,9 +14,13 @@ import (
 // http.Handler will be called instead.
 func MapHandler(pathsToUrls map[string]string, fallback http.Handler) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		path := r.URL.Path
-
-		fmt.Println("URL path is", path)
+		slug := r.URL.Path
+		url, ok := pathsToUrls[slug];
+		if ok {
+			http.Redirect(w, r, url, http.StatusSeeOther)
+		} else {
+			fallback.ServeHTTP(w, r)
+		}
 	})
 }
 
@@ -36,6 +41,32 @@ func MapHandler(pathsToUrls map[string]string, fallback http.Handler) http.Handl
 // See MapHandler to create a similar http.HandlerFunc via
 // a mapping of paths to urls.
 func YAMLHandler(yml []byte, fallback http.Handler) (http.HandlerFunc, error) {
-	// TODO: Implement this...
-	return nil, nil
+	type URLExpand struct {
+    Slug string `yaml:"path"`
+    Full string `yaml:"url"`
+	}
+	type Config struct {
+    Entry []URLExpand `yaml:"config"`
+	}
+
+	var c Config
+	err := yaml.Unmarshal(yml, &c)
+
+	fmt.Printf("--- m:\n%v\n\n", c)
+
+  // Turn list of yaml entries into maps
+	m := make(map[string]string)
+	for _, entry := range c.Entry {
+		m[entry.Slug] = entry.Full
+	}
+
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		slug := r.URL.Path
+		url, ok := m[slug];
+		if ok {
+			http.Redirect(w, r, url, http.StatusSeeOther)
+		} else {
+			fallback.ServeHTTP(w, r)
+		}
+	}), err
 }
