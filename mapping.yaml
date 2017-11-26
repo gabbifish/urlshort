@@ -1,4 +1,3 @@
-config:
 - path: /urlshort
   url: https://github.com/gophercises/urlshort
 - path: /urlshort-final

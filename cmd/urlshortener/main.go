@@ -2,9 +2,9 @@ package main
 
 import (
 	"fmt"
-	"net/http"
+	short "github.com/gabbifish/urlshort/shortener"
 	"io/ioutil"
-	"github.com/gabbifish/urlshort/shortener"
+	"net/http"
 )
 
 func main() {
@@ -15,18 +15,17 @@ func main() {
 		"/urlshort-godoc": "https://godoc.org/github.com/gophercises/urlshort",
 		"/yaml-godoc":     "https://godoc.org/gopkg.in/yaml.v2",
 	}
-	mapHandler := shortener.MapHandler(pathsToUrls, mux)
+	mapHandler := short.MapHandler(pathsToUrls, mux)
 
 	// Build the YAMLHandler using the mapHandler as the
 	// fallback
 
 	yaml, _ := ioutil.ReadFile("mapping.yaml")
-	yamlHandler, err := shortener.YAMLHandler([]byte(yaml), mapHandler)
+	yamlHandler, err := short.YAMLHandler([]byte(yaml), mapHandler)
 	if err != nil {
 		panic(err)
 	}
 	fmt.Println("Starting the server on :8080")
-	// http.ListenAndServe(":8080", mapHandler)
 	http.ListenAndServe(":8080", yamlHandler)
 }
 

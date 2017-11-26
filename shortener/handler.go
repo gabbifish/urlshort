@@ -1,8 +1,8 @@
 package shortener
 
 import (
-	"net/http"
 	"gopkg.in/yaml.v2"
+	"net/http"
 )
 
 // MapHandler will return an http.HandlerFunc (which also
@@ -14,7 +14,7 @@ import (
 func MapHandler(pathsToUrls map[string]string, fallback http.Handler) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		slug := r.URL.Path
-		url, ok := pathsToUrls[slug];
+		url, ok := pathsToUrls[slug]
 		if ok {
 			http.Redirect(w, r, url, http.StatusSeeOther)
 		} else {
@@ -41,25 +41,22 @@ func MapHandler(pathsToUrls map[string]string, fallback http.Handler) http.Handl
 // a mapping of paths to urls.
 func YAMLHandler(yml []byte, fallback http.Handler) (http.HandlerFunc, error) {
 	type URLExpand struct {
-    Slug string `yaml:"path"`
-    Full string `yaml:"url"`
-	}
-	type Config struct {
-    Entry []URLExpand `yaml:"config"`
+		Slug string `yaml:"path"`
+		Full string `yaml:"url"`
 	}
 
-	var c Config
-	err := yaml.Unmarshal(yml, &c)
+	var entries []URLExpand
+	err := yaml.Unmarshal(yml, &entries)
 
-  // Turn list of yaml entries into map
+	// Turn list of yaml entries into map
 	m := make(map[string]string)
-	for _, entry := range c.Entry {
+	for _, entry := range entries {
 		m[entry.Slug] = entry.Full
 	}
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		slug := r.URL.Path
-		url, ok := m[slug];
+		url, ok := m[slug]
 		if ok {
 			http.Redirect(w, r, url, http.StatusSeeOther)
 		} else {
