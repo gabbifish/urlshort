@@ -10,7 +10,6 @@ func handleHandlerFuncInternalError(w http.ResponseWriter, err error, errMsg str
 }
 
 func NewHandlerFromSlugToURLClient(mapper SlugToURL, fallback http.Handler) http.Handler {
-	// TODO: What do we do when there isn't a fallback handler?
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Does a URL exist for the given slug?
 		slug := r.URL.Path
@@ -21,7 +20,12 @@ func NewHandlerFromSlugToURLClient(mapper SlugToURL, fallback http.Handler) http
 		}
 		// If a URL does not exist, then do whatever the fallback handler says
 		if !slugExists {
-			fallback.ServeHTTP(w, r)
+			// Check if fallback handler exists; if not, respond with 404 Not Found
+			if fallback != nil {
+				fallback.ServeHTTP(w, r)
+			} else {
+				w.WriteHeader(http.StatusNotFound)
+			}
 			return
 		}
 		// Get the appropriate URL, given the slug

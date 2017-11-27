@@ -2,6 +2,8 @@ package shortener
 
 import (
 	"fmt"
+	"github.com/gabbifish/urlshort/shortener/mocks"
+	"github.com/stretchr/testify/mock"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -36,8 +38,11 @@ func TestMalformedYAML(t *testing.T) {
 
 func TestMapHandlerFallback(t *testing.T) {
 	mux := defaultMux()
-	mapSlugToURL := NewMapSlugToURL(map[string]string{})
-	mapHandler := NewHandlerFromSlugToURLClient(mapSlugToURL, mux)
+
+	slugToURL := new(mocks.SlugToURL)
+	slugToURL.On("URLExists", "/fizzbuzz").Return(false, nil)
+	slugToURL.On("URL", "/fizzbuzz").Return("", nil)
+	httpHandler := NewHandlerFromSlugToURLClient(slugToURL, mux)
 
 	// Come up with an HTTP request
 	httpRequest, newHttpRequestErr := http.NewRequest("GET", "/fizzbuzz", nil)
@@ -47,7 +52,7 @@ func TestMapHandlerFallback(t *testing.T) {
 
 	// Call the map handler on the HTTP request
 	responseRecorder := httptest.NewRecorder()
-	mapHandler.ServeHTTP(responseRecorder, httpRequest)
+	httpHandler.ServeHTTP(responseRecorder, httpRequest)
 	response := responseRecorder.Result()
 
 	// Examine response code, ensure it is expected
@@ -69,10 +74,15 @@ func TestMapHandlerFallback(t *testing.T) {
 
 func TestMapHandlerNonDefault(t *testing.T) {
 	mux := defaultMux()
-	mapSlugToURL := NewMapSlugToURL(map[string]string{
-		"/fizzbuzz": "https://localhost:420",
-	})
-	mapHandler := NewHandlerFromSlugToURLClient(mapSlugToURL, mux)
+	slugToUrl := new(mocks.SlugToURL)
+	slugToUrl.On("URLExists", "/fizzbuzz").Return(true, nil)
+	slugToUrl.On("URL", "/fizzbuzz").Return("https://localhost:420", nil)
+
+	//httpHandler := NewHandlerFromSlugToURLClient(slugToUrl, mux)
+	//mapSlugToURL := NewMapSlugToURL(map[string]string{
+	//	"/fizzbuzz": "https://localhost:420",
+	//})
+	mapHandler := NewHandlerFromSlugToURLClient(slugToUrl, mux)
 
 	// Create HTTP request
 	httpRequest, newHttpRequestErr := http.NewRequest("GET", "/fizzbuzz", nil)
@@ -101,8 +111,11 @@ func TestMapHandlerNonDefault(t *testing.T) {
 
 func TestMapHandlerWrongMethod(t *testing.T) {
 	mux := defaultMux()
-	mapSlugToURL := NewMapSlugToURL(map[string]string{})
-	mapHandler := NewHandlerFromSlugToURLClient(mapSlugToURL, mux)
+	slugToURL := new(mocks.SlugToURL)
+	slugToURL.On("URLExists", "/fizzbuzz").Return(false, nil)
+	slugToURL.On("URL", "/fizzbuzz").Return("", nil)
+
+	httpHandler := NewHandlerFromSlugToURLClient(slugToURL, mux)
 
 	// Come up with an HTTP request
 	httpRequest, newHttpRequestErr := http.NewRequest("POST", "/fizzbuzz", nil)
@@ -112,7 +125,7 @@ func TestMapHandlerWrongMethod(t *testing.T) {
 
 	// Call map handler on the HTTP request
 	responseRecorder := httptest.NewRecorder()
-	mapHandler.ServeHTTP(responseRecorder, httpRequest)
+	httpHandler.ServeHTTP(responseRecorder, httpRequest)
 	response := responseRecorder.Result()
 
 	// Examine response code, ensure it is expected
@@ -130,5 +143,51 @@ func TestMapHandlerWrongMethod(t *testing.T) {
 	responseBody := strings.Trim(string(responseBodyBytes), "\r\n")
 	if responseBody != HelloResponseBody {
 		t.Fatalf("Wrong response body on default response.  Expected: \"%s\", found: \"%s\"", HelloResponseBody, responseBody)
+	}
+}
+
+func TestHandlerWithNoMatchAndNoFallback(t *testing.T) {
+	// Create a mocked SlugToURL - it will say that no URL exists in its mappings
+	slugToURL := new(mocks.SlugToURL)
+	slugToURL.On("URLExists", mock.Anything).Return(false, nil)
+	slugToURL.On("URL", mock.Anything).Return("", nil)
+
+	// Create a handler using our mocked SlugToURL, and with a nil backup http.Handler
+	httpHandler := NewHandlerFromSlugToURLClient(slugToURL, nil)
+
+	// Simulate a GET request to the slug "/fizzbuzz"
+	responseRecorder := httptest.NewRecorder()
+	httpRequest, newHttpRequestErr := http.NewRequest("GET", "/fizzbuzz", nil)
+	if newHttpRequestErr != nil {
+		t.Fatal("Unexpected error:", newHttpRequestErr)
+	}
+	httpHandler.ServeHTTP(responseRecorder, httpRequest)
+
+	response := responseRecorder.Result()
+	if response.StatusCode != http.StatusNotFound {
+		t.Fatalf("Expected status code %d but found %d", http.StatusNotFound, response.StatusCode)
+	}
+}
+
+func TestHandlerWithMatchAndNoFallback(t *testing.T) {
+	// Create a mocked SlugToURL - it will say that no URL exists in its mappings
+	slugToURL := new(mocks.SlugToURL)
+	slugToURL.On("URLExists", mock.Anything).Return(true, nil)
+	slugToURL.On("URL", mock.Anything).Return("https://google.com", nil)
+
+	// Create a handler using our mocked SlugToURL, and with a nil backup http.Handler
+	httpHandler := NewHandlerFromSlugToURLClient(slugToURL, nil)
+
+	// Simulate a GET request to the slug "/fizzbuzz"
+	responseRecorder := httptest.NewRecorder()
+	httpRequest, newHttpRequestErr := http.NewRequest("GET", "/fizzbuzz", nil)
+	if newHttpRequestErr != nil {
+		t.Fatal("Unexpected error:", newHttpRequestErr)
+	}
+	httpHandler.ServeHTTP(responseRecorder, httpRequest)
+
+	response := responseRecorder.Result()
+	if response.StatusCode != http.StatusSeeOther {
+		t.Fatalf("Expected status code %d but found %d", http.StatusSeeOther, response.StatusCode)
 	}
 }
