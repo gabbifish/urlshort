@@ -1,12 +1,12 @@
 package shortener
 
 import (
-	"testing"
-	"net/http"
 	"fmt"
-	"net/http/httptest"
 	"io/ioutil"
+	"net/http"
+	"net/http/httptest"
 	"strings"
+	"testing"
 )
 
 func defaultMux() *http.ServeMux {
@@ -30,9 +30,9 @@ func TestMalformedYAML(t *testing.T) {
     -
     url: https://github.com/gophercises/urlshort/tree/solution`
 
-    _, err := YAMLHandler([]byte(yaml), mux)
-    if err == nil {
-    	t.Fatal("Incorrectly formed YAML file accepted.")
+	_, err := YAMLHandler([]byte(yaml), mux)
+	if err == nil {
+		t.Fatal("Incorrectly formed YAML file accepted.")
 	}
 }
 

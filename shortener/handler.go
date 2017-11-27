@@ -1,11 +1,12 @@
 package shortener
 
 import (
-	"gopkg.in/yaml.v2"
-	"net/http"
 	"database/sql"
 	"fmt"
+	"net/http"
+
 	_ "github.com/mattn/go-sqlite3"
+	"gopkg.in/yaml.v2"
 )
 
 // MapHandler will return an http.HandlerFunc (which also
@@ -82,7 +83,7 @@ func SQLHandler(dbName string, fallback http.Handler) http.HandlerFunc {
 		if getUrlFromSqlErr != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte("Oops! SQL database derped."))
-		} else if url == "" {  // If no URL is found, then do the default
+		} else if url == "" { // If no URL is found, then do the default
 			fallback.ServeHTTP(w, r)
 		} else {
 			http.Redirect(w, r, url, http.StatusSeeOther)

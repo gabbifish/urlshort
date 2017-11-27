@@ -2,9 +2,10 @@ package main
 
 import (
 	"fmt"
-	short "github.com/gabbifish/urlshort/shortener"
 	"io/ioutil"
 	"net/http"
+
+	short "github.com/gabbifish/urlshort/shortener"
 )
 
 func main() {
@@ -17,8 +18,7 @@ func main() {
 	}
 	mapHandler := short.MapHandler(pathsToUrls, mux)
 
-	// Build the YAMLHandler using the mapHandler as the
-	// fallback
+	// Build the YAMLHandler using the mapHandler as the fallback
 
 	yaml, _ := ioutil.ReadFile("mapping.yaml")
 	yamlHandler, err := short.YAMLHandler([]byte(yaml), mapHandler)
