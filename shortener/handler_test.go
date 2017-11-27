@@ -22,15 +22,13 @@ func hello(w http.ResponseWriter, r *http.Request) {
 }
 
 func TestMalformedYAML(t *testing.T) {
-	mux := defaultMux()
-
 	yaml := `
     - path: /urlshort
     url: https://github.com/gophercises/urlshort
     -
     url: https://github.com/gophercises/urlshort/tree/solution`
+	_, err := NewYAMLSlugToURLFromBytes([]byte(yaml))
 
-	_, err := YAMLHandler([]byte(yaml), mux)
 	if err == nil {
 		t.Fatal("Incorrectly formed YAML file accepted.")
 	}
@@ -38,7 +36,8 @@ func TestMalformedYAML(t *testing.T) {
 
 func TestMapHandlerFallback(t *testing.T) {
 	mux := defaultMux()
-	mapHandler := MapHandler(map[string]string{}, mux)
+	mapSlugToURL := NewMapSlugToURL(map[string]string{})
+	mapHandler := NewHandlerFromSlugToURLClient(mapSlugToURL, mux)
 
 	// Come up with an HTTP request
 	httpRequest, newHttpRequestErr := http.NewRequest("GET", "/fizzbuzz", nil)
@@ -48,7 +47,7 @@ func TestMapHandlerFallback(t *testing.T) {
 
 	// Call the map handler on the HTTP request
 	responseRecorder := httptest.NewRecorder()
-	mapHandler(responseRecorder, httpRequest)
+	mapHandler.ServeHTTP(responseRecorder, httpRequest)
 	response := responseRecorder.Result()
 
 	// Examine response code, ensure it is expected
@@ -70,9 +69,10 @@ func TestMapHandlerFallback(t *testing.T) {
 
 func TestMapHandlerNonDefault(t *testing.T) {
 	mux := defaultMux()
-	mapHandler := MapHandler(map[string]string{
+	mapSlugToURL := NewMapSlugToURL(map[string]string{
 		"/fizzbuzz": "https://localhost:420",
-	}, mux)
+	})
+	mapHandler := NewHandlerFromSlugToURLClient(mapSlugToURL, mux)
 
 	// Create HTTP request
 	httpRequest, newHttpRequestErr := http.NewRequest("GET", "/fizzbuzz", nil)
@@ -82,7 +82,7 @@ func TestMapHandlerNonDefault(t *testing.T) {
 
 	// Call map handler on the HTTP request
 	responseRecorder := httptest.NewRecorder()
-	mapHandler(responseRecorder, httpRequest)
+	mapHandler.ServeHTTP(responseRecorder, httpRequest)
 	response := responseRecorder.Result()
 
 	// Examine response code, ensure it is expected
@@ -101,7 +101,8 @@ func TestMapHandlerNonDefault(t *testing.T) {
 
 func TestMapHandlerWrongMethod(t *testing.T) {
 	mux := defaultMux()
-	mapHandler := MapHandler(map[string]string{}, mux)
+	mapSlugToURL := NewMapSlugToURL(map[string]string{})
+	mapHandler := NewHandlerFromSlugToURLClient(mapSlugToURL, mux)
 
 	// Come up with an HTTP request
 	httpRequest, newHttpRequestErr := http.NewRequest("POST", "/fizzbuzz", nil)
@@ -111,7 +112,7 @@ func TestMapHandlerWrongMethod(t *testing.T) {
 
 	// Call map handler on the HTTP request
 	responseRecorder := httptest.NewRecorder()
-	mapHandler(responseRecorder, httpRequest)
+	mapHandler.ServeHTTP(responseRecorder, httpRequest)
 	response := responseRecorder.Result()
 
 	// Examine response code, ensure it is expected
