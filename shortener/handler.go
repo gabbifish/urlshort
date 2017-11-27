@@ -3,6 +3,9 @@ package shortener
 import (
 	"gopkg.in/yaml.v2"
 	"net/http"
+	"database/sql"
+	"fmt"
+	_ "github.com/mattn/go-sqlite3"
 )
 
 // MapHandler will return an http.HandlerFunc (which also
@@ -63,4 +66,52 @@ func YAMLHandler(yml []byte, fallback http.Handler) (http.HandlerFunc, error) {
 			fallback.ServeHTTP(w, r)
 		}
 	}), err
+}
+
+// SQLHandler returns a HandlerFunc that queries a slug's full URL in a SQL
+// database (here, SQLlite3 for simplicity). If there is a database error,
+// SQLHandler's returned HandlerFunc will respond with a 500 Internal Server
+// Error status and an error message. Otherwise, if the slug-URL mapping exists
+// in the SQL db, then the HandlerFunc will redirect to the appropriate page.
+// If mapping does not exist, SQLHandler passes request to fallback Handler.
+func SQLHandler(dbName string, fallback http.Handler) http.HandlerFunc {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Get the appropriate mapping from the request
+		slug := r.URL.Path
+		url, getUrlFromSqlErr := getURLFromDB(dbName, slug)
+		if getUrlFromSqlErr != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte("Oops! SQL database derped."))
+		} else if url == "" {  // If no URL is found, then do the default
+			fallback.ServeHTTP(w, r)
+		} else {
+			http.Redirect(w, r, url, http.StatusSeeOther)
+		}
+	})
+}
+
+func getURLFromDB(dbName string, path string) (string, error) {
+	db, err := sql.Open("sqlite3", dbName)
+	if err != nil {
+		return "", err
+	}
+
+	// Write SQL query
+	query := fmt.Sprintf("SELECT url FROM Mappings WHERE slug = '%s'", path)
+	rows, err := db.Query(query)
+	if err != nil {
+		return "", err
+	}
+
+	// Retrieve result from rows (there should be only one row,
+	// so we use if rows.Next(), not for rows.Next()).2
+	defer rows.Close()
+	url := ""
+	if rows.Next() {
+		err := rows.Scan(&url)
+		if err != nil {
+			return url, err
+		}
+	}
+	return url, nil
 }

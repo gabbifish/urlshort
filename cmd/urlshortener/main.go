@@ -25,8 +25,10 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+
+	sqlHandler := short.SQLHandler("./mapping.db", yamlHandler)
 	fmt.Println("Starting the server on :8080")
-	http.ListenAndServe(":8080", yamlHandler)
+	http.ListenAndServe(":8080", sqlHandler)
 }
 
 func defaultMux() *http.ServeMux {

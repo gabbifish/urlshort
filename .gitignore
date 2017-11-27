@@ -15,3 +15,6 @@
 
 # IDE generated files
 .idea/
+
+# DB files
+*.db
